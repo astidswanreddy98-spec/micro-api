@@ -1,0 +1,11 @@
+1
+00:00:01,000 --> 00:00:03,500
+Hello, welcome to this video.
+
+2
+00:00:04,000 --> 00:00:07,000
+Today we are testing an automated subtitle translator.
+
+3
+00:00:07,500 --> 00:00:09,500
+Thank you for watching!

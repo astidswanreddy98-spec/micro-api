@@ -26,10 +26,15 @@ async def translate_srt(
         subs = pysrt.from_string(srt_text)
         translator = GoogleTranslator(source=source_lang, target=target_lang)
 
-        # Translate only the subtitle dialogue while keeping timestamps untouched
-        for sub in subs:
-            if sub.text.strip():
-                sub.text = translator.translate(sub.text)
+        # Collect non-empty texts to translate in a single batch request
+        indices = [i for i, sub in enumerate(subs) if sub.text.strip()]
+        texts_to_translate = [subs[i].text for i in indices]
+
+        if texts_to_translate:
+            # Batch call avoids rate limits
+            translated_texts = translator.translate_batch(texts_to_translate)
+            for idx, translated in zip(indices, translated_texts):
+                subs[idx].text = translated
 
         output = io.StringIO()
         subs.write_into(output)
