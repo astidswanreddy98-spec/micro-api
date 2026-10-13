@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import PlainTextResponse
 import pysrt
-from deep_translator import GoogleTranslator
+from deep_translator import MyMemoryTranslator
 import io
 
 app = FastAPI(title="Subtitle Translation API")
@@ -13,8 +13,8 @@ def home():
 @app.post("/translate-srt")
 async def translate_srt(
     file: UploadFile = File(...),
-    target_lang: str = Form("en"),
-    source_lang: str = Form("auto")
+    target_lang: str = Form("ja"),
+    source_lang: str = Form("en")
 ):
     if not file.filename.endswith(".srt"):
         raise HTTPException(status_code=400, detail="Only .srt subtitle files are supported.")
@@ -24,25 +24,12 @@ async def translate_srt(
         srt_text = content.decode("utf-8", errors="ignore")
         subs = pysrt.from_string(srt_text)
 
-        # Collect dialogues
-        dialogues = [sub.text for sub in subs]
+        # MyMemory works reliably on cloud hosts without IP blocks
+        translator = MyMemoryTranslator(source=source_lang, target=target_lang)
 
-        if dialogues:
-            # Join all dialogues into ONE single string using a delimiter
-            delimiter = " \n<<<>>>\n "
-            joined_text = delimiter.join(dialogues)
-
-            # Make exactly ONE HTTP translation request
-            translator = GoogleTranslator(source=source_lang, target=target_lang)
-            translated_blob = translator.translate(joined_text)
-
-            # Split back into lines
-            translated_lines = translated_blob.split("<<<>>>")
-
-            # Assign back to subtitles
-            for i, line in enumerate(translated_lines):
-                if i < len(subs):
-                    subs[i].text = line.strip()
+        for sub in subs:
+            if sub.text.strip():
+                sub.text = translator.translate(sub.text)
 
         output = io.StringIO()
         subs.write_into(output)
