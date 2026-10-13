@@ -22,19 +22,27 @@ async def translate_srt(
     try:
         content = await file.read()
         srt_text = content.decode("utf-8", errors="ignore")
-        
         subs = pysrt.from_string(srt_text)
-        translator = GoogleTranslator(source=source_lang, target=target_lang)
 
-        # Collect non-empty texts to translate in a single batch request
-        indices = [i for i, sub in enumerate(subs) if sub.text.strip()]
-        texts_to_translate = [subs[i].text for i in indices]
+        # Collect dialogues
+        dialogues = [sub.text for sub in subs]
 
-        if texts_to_translate:
-            # Batch call avoids rate limits
-            translated_texts = translator.translate_batch(texts_to_translate)
-            for idx, translated in zip(indices, translated_texts):
-                subs[idx].text = translated
+        if dialogues:
+            # Join all dialogues into ONE single string using a delimiter
+            delimiter = " \n<<<>>>\n "
+            joined_text = delimiter.join(dialogues)
+
+            # Make exactly ONE HTTP translation request
+            translator = GoogleTranslator(source=source_lang, target=target_lang)
+            translated_blob = translator.translate(joined_text)
+
+            # Split back into lines
+            translated_lines = translated_blob.split("<<<>>>")
+
+            # Assign back to subtitles
+            for i, line in enumerate(translated_lines):
+                if i < len(subs):
+                    subs[i].text = line.strip()
 
         output = io.StringIO()
         subs.write_into(output)
