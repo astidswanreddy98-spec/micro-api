@@ -6,6 +6,20 @@ import io
 
 app = FastAPI(title="Subtitle Translation API")
 
+# Normalise common short language codes to MyMemory format
+LANG_MAP = {
+    "en": "en-GB",
+    "ja": "ja-JP",
+    "kn": "kn-IN",
+    "hi": "hi-IN",
+    "es": "es-ES",
+    "fr": "fr-FR",
+    "de": "de-DE",
+    "ko": "ko-KR",
+    "te": "te-IN",
+    "ta": "ta-IN"
+}
+
 @app.get("/")
 def home():
     return {"status": "online", "service": "Subtitle Translation API"}
@@ -19,13 +33,15 @@ async def translate_srt(
     if not file.filename.endswith(".srt"):
         raise HTTPException(status_code=400, detail="Only .srt subtitle files are supported.")
 
+    src = LANG_MAP.get(source_lang.lower(), source_lang)
+    tgt = LANG_MAP.get(target_lang.lower(), target_lang)
+
     try:
         content = await file.read()
         srt_text = content.decode("utf-8", errors="ignore")
         subs = pysrt.from_string(srt_text)
 
-        # MyMemory works reliably on cloud hosts without IP blocks
-        translator = MyMemoryTranslator(source=source_lang, target=target_lang)
+        translator = MyMemoryTranslator(source=src, target=tgt)
 
         for sub in subs:
             if sub.text.strip():
